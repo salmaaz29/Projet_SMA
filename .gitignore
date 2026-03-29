@@ -37,3 +37,12 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+# Fichiers générés par JADE
+APDescription.txt
+MTPs-Main-Container.txt
+
+# Fichiers IntelliJ
+.idea/
+*.iml
+target/
