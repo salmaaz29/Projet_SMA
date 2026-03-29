@@ -83,7 +83,7 @@ public class PersonAgent extends Agent {
 
             ACLMessage request = new ACLMessage(ACLMessage.REQUEST);
             request.addReceiver(restaurantChoisi);
-            request.setContent("demande-rservation");
+            request.setContent("demande-reservation");
             // identifier la concersation si plusieurs agents communique en meme temps
             request.setConversationId("Reserv-" + getLocalName() + "-" + nbrTentatives);
             myAgent.send(request);
