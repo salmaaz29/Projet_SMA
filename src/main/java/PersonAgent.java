@@ -96,7 +96,7 @@ public class PersonAgent extends Agent {
             ACLMessage reponse = myAgent.blockingReceive();
 
             if(reponse != null){
-                if(reponse.getPerformative() == ACLMessage.CONFIRM){
+                if(reponse.getPerformative() == ACLMessage.AGREE){
                     // place accordee au agent bien reserve
                     reserve = true;
                     System.out.println("(" + getLocalName() +
