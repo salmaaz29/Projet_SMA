@@ -5,91 +5,113 @@ import jade.wrapper.AgentContainer;
 import jade.wrapper.AgentController;
 
 public class Main {
+    // ============================================================
+    // Variables de synchronisation partagées avec StatisticsAgent
+    // ============================================================
+    public static volatile boolean scenarioTermine = false;
+    public static final Object verrou = new Object();
 
     // ============================================================
-    // PARAMÈTRES DE LA SIMULATION — modifiez ici uniquement
+    // Définition des scénarios (N = nombre de personnes)
     // ============================================================
-    static final int N = 5;                          // nombre de personnes
-    static final int[] CAPACITES = {4, 3, 5, 3, 4}; // capacité de chaque restaurant
-    // ⚠️ Règle : somme(CAPACITES) doit être > 2*N
-    // ici : 4+3+5+3+4 = 19 > 10 ✅
-    // ⚠️ Règle : chaque Ci doit être < N
-    // ici : max = 5 = N → à ajuster si N change
+    static final int[] SCENARIOS_N = {5, 10, 15};
+
+    // Capacités des restaurants pour chaque scénario (M restaurants)
+    // On s'assure que Total Ci > 2*N et chaque Ci < N
+    static final int[][] SCENARIOS_CAPACITES = {
+            {4, 3, 5, 3, 4},              // Scénario 1 : N=5, M=5, Total=19 (>10)
+            {4, 3, 5, 3, 4, 4, 3, 5},     // Scénario 2 : N=10, M=8, Total=31 (>20)
+            {4, 3, 5, 3, 4, 4, 3, 5, 4, 3} // Scénario 3 : N=15, M=10, Total=38 (>30)
+    };
+
+    // Stockage des résultats finaux pour le tableau
+    public static double[] moyennesResultats = new double[3];
+    public static int[] totauxResultats = new int[3];
 
     public static void main(String[] args) throws Exception {
+        System.out.println("==============================================");
+        System.out.println("   DEMARRAGE DE LA SIMULATION MULTI-SCENARIOS ");
+        System.out.println("==============================================\n");
 
-        int M = CAPACITES.length; // nombre de restaurants calculé automatiquement
-
-        // Vérification des règles du problème
-        int capaciteTotale = 0;
-        for (int c : CAPACITES) capaciteTotale += c;
-
-        System.out.println("╔══════════════════════════════════════╗");
-        System.out.println("║     SIMULATION — Projet SMA          ║");
-        System.out.println("╠══════════════════════════════════════╣");
-        System.out.println("║  N (personnes)       : " + N);
-        System.out.println("║  M (restaurants)     : " + M);
-        System.out.println("║  Capacité totale     : " + capaciteTotale);
-        System.out.println("║  2*N                 : " + (2 * N));
-        System.out.println("║  Règle capacité > 2N : "
-                + (capaciteTotale > 2 * N ? "✅ OK" : "❌ VIOLATION !"));
-        System.out.println("╚══════════════════════════════════════╝");
-
-        // ============================================================
-        // 1. Démarrer JADE
-        // ============================================================
+        // 1. Initialisation de l'environnement JADE
         Runtime rt = Runtime.instance();
         Profile profile = new ProfileImpl();
         profile.setParameter(Profile.MAIN_HOST, "localhost");
-        profile.setParameter(Profile.GUI, "true"); // fenêtre graphique JADE
+        profile.setParameter(Profile.GUI, "true"); // Affiche l'interface JADE
         AgentContainer container = rt.createMainContainer(profile);
 
-        // ============================================================
-        // 2. Lancer StatisticsAgent EN PREMIER
-        //    → il doit être prêt avant que les PersonAgents finissent
-        //    → argument : N (nombre de personnes à attendre)
-        // ============================================================
-        AgentController stats = container.createNewAgent(
-                "stats",                          // nom local → "stats" OBLIGATOIRE
-                "StatisticsAgent",                // classe Java
-                new Object[]{String.valueOf(N)}   // argument : N
-        );
-        stats.start();
-        System.out.println("▶ StatisticsAgent lancé");
-        Thread.sleep(500); // laisser le temps de démarrer
+        // Petit temps de pause pour laisser le GUI s'ouvrir
+        Thread.sleep(2000);
 
-        // ============================================================
-        // 3. Lancer les RestaurantAgents
-        //    → doivent s'inscrire au DF avant les PersonAgents
-        // ============================================================
-        for (int i = 0; i < M; i++) {
-            String nom = "r" + (i + 1); // r1, r2, r3...
-            AgentController restaurant = container.createNewAgent(
-                    nom,
-                    "RestaurantAgent",
-                    new Object[]{String.valueOf(CAPACITES[i])}
+        // 2. Boucle sur les 3 scénarios
+        for (int s = 0; s < SCENARIOS_N.length; s++) {
+            int N = SCENARIOS_N[s];
+            int[] capacites = SCENARIOS_CAPACITES[s];
+            int M = capacites.length;
+
+            System.out.println(">>> LANCEMENT SCENARIO " + (s + 1) + " (N=" + N + ", M=" + M + ")");
+
+            scenarioTermine = false;
+
+            // --- ETAPE A : Lancer StatisticsAgent ---
+            // On lui passe N et l'index du scénario (s) en arguments
+            AgentController stats = container.createNewAgent(
+                    "stats",
+                    "StatisticsAgent",
+                    new Object[]{String.valueOf(N), String.valueOf(s)}
             );
-            restaurant.start();
-            System.out.println("▶ " + nom + " lancé | Capacité : " + CAPACITES[i]);
-        }
-        Thread.sleep(1000); // laisser le temps aux restaurants de s'inscrire au DF
+            stats.start();
 
-        // ============================================================
-        // 4. Lancer les PersonAgents EN DERNIER
-        //    → le DF est maintenant peuplé de restaurants
-        // ============================================================
-        for (int i = 0; i < N; i++) {
-            String nom = "p" + (i + 1); // p1, p2, p3...
-            AgentController personne = container.createNewAgent(
-                    nom,
-                    "PersonAgent",
-                    null // pas d'argument pour PersonAgent
-            );
-            personne.start();
-            System.out.println("▶ " + nom + " lancé");
+            // --- ETAPE B : Lancer les RestaurantAgents ---
+            for (int i = 0; i < M; i++) {
+                AgentController restau = container.createNewAgent(
+                        "R" + (i + 1),
+                        "RestaurantAgent",
+                        new Object[]{String.valueOf(capacites[i])}
+                );
+                restau.start();
+            }
+
+            // Attendre un peu que les restaurants s'inscrivent dans le DF
+            Thread.sleep(1000);
+
+            // --- ETAPE C : Lancer les PersonAgents ---
+            for (int i = 0; i < N; i++) {
+                AgentController perso = container.createNewAgent(
+                        "P" + (i + 1),
+                        "PersonAgent",
+                        null
+                );
+                perso.start();
+            }
+
+            // --- ETAPE D : ATTENTE DE FIN DU SCENARIO ---
+            // Le Main se met en pause ici jusqu'à ce que StatisticsAgent appelle notifyAll()
+            synchronized (verrou) {
+                while (!scenarioTermine) {
+                    System.out.println("Main : En attente des résultats...");
+                    verrou.wait();
+                }
+            }
+
+            System.out.println(">>> SCENARIO " + (s + 1) + " TERMINE.\n");
+
+            // Nettoyage : On laisse un peu de temps avant de passer au suivant
+            Thread.sleep(2000);
         }
 
-        System.out.println("\n🚀 Simulation démarrée !");
-        System.out.println("📊 Attendez les résultats du StatisticsAgent...\n");
+        // 3. Affichage du tableau final
+        afficherTableauRecapitulatif();
+    }
+
+    private static void afficherTableauRecapitulatif() {
+        System.out.println("\n======= TABLEAU COMPARATIF FINAL =======");
+        System.out.println("Scénario | N  | M  | Total Appels | Moyenne");
+        System.out.println("----------------------------------------");
+        for (int i = 0; i < SCENARIOS_N.length; i++) {
+            System.out.printf("   %d     | %2d | %2d |     %3d      |  %.2f %n",
+                    (i+1), SCENARIOS_N[i], SCENARIOS_CAPACITES[i].length, totauxResultats[i], moyennesResultats[i]);
+        }
+        System.out.println("========================================\n");
     }
 }

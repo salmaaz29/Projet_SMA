@@ -112,32 +112,32 @@ public class StatisticsAgent extends Agent {
 
 
         public void action() {
-            // Cette méthode est appelée UNE SEULE FOIS puis le behaviour
-            // est automatiquement retiré (done() = true en interne)
-
+            // 1. Calcul des stats
             double moyenne = (double) TotalTentatives / N;
 
-            // ── Affichage des résultats ───────────────────────
-            System.out.println("\n╔══════════════════════════════════════════╗");
-            System.out.println("║         RÉSULTATS DE LA SIMULATION        ║");
-            System.out.println("╠══════════════════════════════════════════╣");
-            System.out.println("║  Comportement      : ALÉATOIRE            ║");
-            System.out.println("║  N (personnes)     : " + N);
-            System.out.println("║─────────────────────────────────────────║");
-            System.out.println("║  Résultats par agent :                    ║");
-
-            // Afficher le détail de chaque agent
-            for (int i = 0; i < agentsTermines; i++) {
-                System.out.println("║    " + resultAgent[i]);
+            // 2. RECUPERER L'INDEX DU SCÉNARIO
+            // On récupère le 2ème argument passé au lancement : c'est le numéro du scénario (0, 1 ou 2)
+            int scenarioIndex = 0;
+            Object[] args = myAgent.getArguments();
+            if (args != null && args.length > 1) {
+                scenarioIndex = Integer.parseInt(args[1].toString());
             }
 
-            System.out.println("║─────────────────────────────────────────║");
-            System.out.println("║  Total tentatives  : " + TotalTentatives);
-            System.out.println("║  Moyenne / agent   : "
-                    + String.format("%.2f", moyenne));
-            System.out.println("╚══════════════════════════════════════════╝\n");
+            // 3. SAUVEGARDER DANS LE MAIN
+            // On écrit directement les résultats dans les tableaux statiques de la classe Main
+            Main.totauxResultats[scenarioIndex] = TotalTentatives;
+            Main.moyennesResultats[scenarioIndex] = moyenne;
 
-            // Arrêter proprement le StatisticsAgent
+            // 4. AFFICHAGE CONSOLE (Optionnel, pour le debug)
+            System.out.println("   [Stats] Scénario " + (scenarioIndex + 1) + " enregistré.");
+
+            // 5. LE SIGNAL DE RÉVEIL (Très important)
+            Main.scenarioTermine = true; // On change le drapeau
+            synchronized (Main.verrou) {
+                Main.verrou.notifyAll(); // On réveille le Main qui attendait avec wait()
+            }
+
+            // 6. FIN DE L'AGENT
             myAgent.doDelete();
         }
 

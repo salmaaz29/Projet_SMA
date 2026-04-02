@@ -7,12 +7,11 @@ import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.domain.FIPAException;
 import jade.lang.acl.ACLMessage;
 
-import static jade.lang.acl.ACLParserConstants.AID;
 
 public class PersonAgent extends Agent {
 
     // variables d agent
-    private int nbrTentatives ; // compteur
+    private int nbrTentatives = 0; // compteur
     private boolean reserve = false; // true quand la reservation est bien faite
 
     // setup() va etre appele auto au demarrage de l agent
@@ -86,6 +85,8 @@ public class PersonAgent extends Agent {
             request.setContent("demande-reservation");
             // identifier la concersation si plusieurs agents communique en meme temps
             request.setConversationId("Reserv-" + getLocalName() + "-" + nbrTentatives);
+
+            try { Thread.sleep(5000); } catch (InterruptedException e) {}
             myAgent.send(request);
 
             System.out.println("(" + nbrTentatives + " tentatives) ->  " + restaurantChoisi.getLocalName());
