@@ -75,6 +75,10 @@ public class Main {
             // Attendre un peu que les restaurants s'inscrivent dans le DF
             Thread.sleep(1000);
 
+            // --- C'EST ICI QU'IL FAUT METTRE LA LONGUE PAUSE ---
+            System.out.println("⚠️ PAUSE DE 60s : Activez le Sniffer dans JADE maintenant !");
+            Thread.sleep(60000); // 60 secondes pour être tranquille
+
             // --- ETAPE C : Lancer les PersonAgents ---
             for (int i = 0; i < N; i++) {
                 AgentController perso = container.createNewAgent(
@@ -86,7 +90,6 @@ public class Main {
             }
 
             // --- ETAPE D : ATTENTE DE FIN DU SCENARIO ---
-            // Le Main se met en pause ici jusqu'à ce que StatisticsAgent appelle notifyAll()
             synchronized (verrou) {
                 while (!scenarioTermine) {
                     System.out.println("Main : En attente des résultats...");
@@ -96,11 +99,31 @@ public class Main {
 
             System.out.println(">>> SCENARIO " + (s + 1) + " TERMINE.\n");
 
-            // Nettoyage : On laisse un peu de temps avant de passer au suivant
-            Thread.sleep(2000);
-        }
+// ============================================================
+            // C'EST ICI : NETTOYAGE DES AGENTS DU SCÉNARIO PRÉCÉDENT
+            // ============================================================
+            System.out.println("Nettoyage des agents pour le prochain scénario...");
 
-        // 3. Affichage du tableau final
+            // On tue les restaurants (R1, R2...)
+            for (int i = 1; i <= M; i++) {
+                try {
+                    container.getAgent("R" + i).kill();
+                } catch (Exception e) { /* Déjà supprimé */ }
+            }
+
+            // On tue les personnes (P1, P2...)
+            for (int i = 1; i <= N; i++) {
+                try {
+                    container.getAgent("P" + i).kill();
+                } catch (Exception e) { /* Déjà terminé */ }
+            }
+
+            // Petite pause pour laisser JADE libérer les noms d'agents
+            Thread.sleep(2000);
+
+        } // <--- FIN DE LA BOUCLE FOR (s)
+
+        // 3. Affichage du tableau final (en dehors de la boucle)
         afficherTableauRecapitulatif();
     }
 

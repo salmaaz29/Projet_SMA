@@ -43,6 +43,11 @@ public class PersonAgent extends Agent {
 
         @Override
         public void action() {
+            // 1. L'agent attend 3 secondes AVANT de chercher un restaurant
+            // Ça te laisse le temps de voir l'agent apparaître dans le Sniffer
+            try {
+                Thread.sleep(7000);
+            } catch (InterruptedException e) { }
 
             // chercher restau dans DF
             DFAgentDescription dfd = new DFAgentDescription();
