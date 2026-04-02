@@ -18,10 +18,11 @@ public class Main {
 
     // Capacités des restaurants pour chaque scénario (M restaurants)
     // On s'assure que Total Ci > 2*N et chaque Ci < N
+    // ⚠️ Capacités réduites pour forcer des conflits et voir des REFUSE
     static final int[][] SCENARIOS_CAPACITES = {
-            {4, 3, 5, 3, 4},              // Scénario 1 : N=5, M=5, Total=19 (>10)
-            {4, 3, 5, 3, 4, 4, 3, 5},     // Scénario 2 : N=10, M=8, Total=31 (>20)
-            {4, 3, 5, 3, 4, 4, 3, 5, 4, 3} // Scénario 3 : N=15, M=10, Total=38 (>30)
+            {3, 2, 3, 2, 3},                    // Scénario 1 : N=5,  M=5,  Total=13 (>10) ✅
+            {4, 3, 4, 3, 4, 3, 4, 3},           // Scénario 2 : N=10, M=8,  Total=28 (>20) ✅
+            {4, 3, 4, 3, 4, 3, 4, 3, 4, 5}      // Scénario 3 : N=15, M=10, Total=37 (>30) ✅
     };
 
     // Stockage des résultats finaux pour le tableau
@@ -37,7 +38,7 @@ public class Main {
         Runtime rt = Runtime.instance();
         Profile profile = new ProfileImpl();
         profile.setParameter(Profile.MAIN_HOST, "localhost");
-        profile.setParameter(Profile.GUI, "true"); // Affiche l'interface JADE
+        profile.setParameter(Profile.GUI, "true");
         AgentContainer container = rt.createMainContainer(profile);
 
         // Petit temps de pause pour laisser le GUI s'ouvrir
@@ -54,7 +55,6 @@ public class Main {
             scenarioTermine = false;
 
             // --- ETAPE A : Lancer StatisticsAgent ---
-            // On lui passe N et l'index du scénario (s) en arguments
             AgentController stats = container.createNewAgent(
                     "stats",
                     "StatisticsAgent",
@@ -72,12 +72,12 @@ public class Main {
                 restau.start();
             }
 
-            // Attendre un peu que les restaurants s'inscrivent dans le DF
+            // Attendre que les restaurants s'inscrivent dans le DF
             Thread.sleep(1000);
 
-            // --- C'EST ICI QU'IL FAUT METTRE LA LONGUE PAUSE ---
-            System.out.println("⚠️ PAUSE DE 60s : Activez le Sniffer dans JADE maintenant !");
-            Thread.sleep(60000); // 60 secondes pour être tranquille
+            // --- PAUSE SNIFFER ---
+            System.out.println("⚠️ PAUSE DE 50s : Activez le Sniffer dans JADE maintenant !");
+            Thread.sleep(50000);
 
             // --- ETAPE C : Lancer les PersonAgents ---
             for (int i = 0; i < N; i++) {
@@ -99,8 +99,8 @@ public class Main {
 
             System.out.println(">>> SCENARIO " + (s + 1) + " TERMINE.\n");
 
-// ============================================================
-            // C'EST ICI : NETTOYAGE DES AGENTS DU SCÉNARIO PRÉCÉDENT
+            // ============================================================
+            // NETTOYAGE DES AGENTS DU SCÉNARIO PRÉCÉDENT
             // ============================================================
             System.out.println("Nettoyage des agents pour le prochain scénario...");
 
@@ -118,12 +118,12 @@ public class Main {
                 } catch (Exception e) { /* Déjà terminé */ }
             }
 
-            // Petite pause pour laisser JADE libérer les noms d'agents
+            // Pause pour laisser JADE libérer les noms d'agents
             Thread.sleep(2000);
 
-        } // <--- FIN DE LA BOUCLE FOR (s)
+        } // FIN DE LA BOUCLE FOR
 
-        // 3. Affichage du tableau final (en dehors de la boucle)
+        // 3. Affichage du tableau final
         afficherTableauRecapitulatif();
     }
 
@@ -133,8 +133,11 @@ public class Main {
         System.out.println("----------------------------------------");
         for (int i = 0; i < SCENARIOS_N.length; i++) {
             System.out.printf("   %d     | %2d | %2d |     %3d      |  %.2f %n",
-                    (i+1), SCENARIOS_N[i], SCENARIOS_CAPACITES[i].length, totauxResultats[i], moyennesResultats[i]);
+                    (i+1), SCENARIOS_N[i], SCENARIOS_CAPACITES[i].length,
+                    totauxResultats[i], moyennesResultats[i]);
         }
         System.out.println("========================================\n");
+        System.out.println("Observation : avec le comportement ALEATOIRE,");
+        System.out.println("plus N augmente → plus de conflits → moyenne > 1.00");
     }
 }
